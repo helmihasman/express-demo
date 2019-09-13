@@ -1,16 +1,7 @@
 var express = require('express');
-var multer  =   require('multer');
 var path = require('path');
-var favicon = require('serve-favicon');
-var logger = require('morgan');
-var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-var flash = require('express-flash');
-var session = require('express-session');
-var expressValidator = require('express-validator');
-var methodOverride = require('method-override');
 var bcrypt = require('bcrypt');
-var request = require('request');
 var mysql = require('mysql');
 
 var routes = require('./routes/index');
@@ -21,20 +12,9 @@ var swaggerUi = require('swagger-ui-express'),
 
 var app = express();
 var http = require('http').Server(app);
-var io = require('socket.io')(http);
 
 app.use('/api-doc', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use('/api/v1', routes);
-
-var passport = require('passport');
-var LocalStrategy = require('passport-local').Strategy;
-
-
-app.use(function(req, res, next){
-  res.io = io;
-  next();
-});
-
 
 http.listen(process.env.PORT || 3000, function(){
 //  console.log('listening on **:'+process.env.PORT);
@@ -49,42 +29,12 @@ app.set('view engine', 'jade');
 
 // uncomment after placing your favicon in /public
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
-app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(session({secret:"secretpass123456"}));
-app.use(function(req,res,next){
-    res.locals.session = req.session;
-    next();
-});
-app.use(flash());
-app.use(expressValidator());
-app.use(cookieParser());
-app.use(require('less-middleware')(path.join(__dirname, 'public')));
-app.use(express.static(path.join(__dirname, 'public')));
-
-
-app.use('/uploads', express.static(process.cwd() + '/uploads'));
 
 app.use('/', routes);
 app.use('/users', users);
-//app.use('/customers', customers);
-//app.use('/admin_users', admin_users);
 
-//passport
-app.use(flash());
-app.use(passport.initialize());
-app.use(passport.session());
-
-
-app.use(methodOverride(function(req, res){
- if (req.body && typeof req.body == 'object' && '_method' in req.body) 
-   { 
-      var method = req.body._method;
-      delete req.body._method;
-      return method;
-    } 
-  }));
 
 var con = mysql.createConnection({
     host: "sl-us-south-1-portal.9.dblayer.com",
@@ -94,39 +44,11 @@ var con = mysql.createConnection({
     database: "compose"
 });
 
-
-con.connect(function(error){
-   if(!!error){
-       console.log(error);
-       
-   }
-   else{
-       console.log('Connecteded');
-   }
-});
-
-
-app.post("/login", passport.authenticate('local', {
-
-    successRedirect: '/',
-
-    failureRedirect: '/login',
-
-    failureFlash: true
-
-}), function(req, res, info){
+app.get('/',function(req,res){
     
-    res.render('/',{'message' :req.flash('message')});
+     res.redirect('/api-doc');
 
 });
-
-app.get('/', isAuthenticated,function(req,res){
-    
-    res.render('error');
-
-});
-
-
 
 //------------------------- REST API -------------------------------
 
@@ -260,78 +182,7 @@ app.get('/api/v1/getUserList',function(req,res){
 
 });
 
-
-
 //-------------------------REST API------------------------------------
-
- 
- 
-passport.use('local', new LocalStrategy({
-
-  usernameField: 'username',
-
-  passwordField: 'password',
-
-  passReqToCallback: true //passback entire req to call back
-} , function (req, username, password, done){
-
-
-      if(!username || !password ) { return done(null, false, req.flash('message','All fields are required.')); }
-
-      var salt = '7fa73b47df808d36c5fe328546ddef8b9011b2c6';
-
-      con.query("select * from c_users where username = ?", [username], function(err, rows){
-
-          console.log("errrr1-"+err); //console.log(rows);
-
-        if (err) return done(req.flash('message',err));
-
-        if(!rows.length){ return done(null, false, req.flash('message','Invalid username or password.')); }
-
-//        salt = salt+''+password;
-//
-//        var encPassword = crypto.createHash('sha1').update(salt).digest('hex');
-
-        var encPassword = password;
-        var dbPassword  = rows[0].password;
-
-        if(!(dbPassword === encPassword)){
-
-            return done(null, false, req.flash('message','Invalid username or password.'));
-
-         }
-
-         
-//         console.log("rowwww = "+JSON.stringify(rows[0]));
-        return done(null, rows[0]);
-
-      });
-
-    }
-
-));
-
-passport.serializeUser(function(user, done){
-//    console.log("rowwwwss = "+JSON.stringify(user));
-    done(null, user);
-
-});
-
-passport.deserializeUser(function(user, done){
-    done(null, user);
-    
-});
-
-
-function isAuthenticated(req, res, next) {
-
-  if (req.isAuthenticated())
-
-    return next();
-
-  res.redirect('/api-doc');
-
-}
 
  
 // catch 404 and forward to error handler
